@@ -70,9 +70,9 @@ int main(int argc, char *argv[])
 	//	memcpy(&fat, buff, sizeof(buff));
 	printf("Bytes: %d\n", ptr->BPB_BytsPerSec);
 
-	FirstDataSector = (ptr->BPB_RsvdSecCnt + (ptr->BPB_NumFATs * ptr->BPB_FATSz32)) * ptr->BPB_BytsPerSec; 
+	FirstSectorofCluster = (ptr->BPB_RsvdSecCnt + (ptr->BPB_NumFATs * ptr->BPB_FATSz32)) * ptr->BPB_BytsPerSec; 
 
-	FirstSectorofCluster = (N-2) * ptr->BPB_SecPerClus * ptr->BPB_BytsPerSec + FirstDataSector;
+	FirstDataSector = (N-2) * ptr->BPB_SecPerClus * ptr->BPB_BytsPerSec + FirstSectorofCluster;
 
 	FAT_Start = ptr->BPB_RsvdSecCnt * ptr->BPB_BytsPerSec;
 
@@ -80,15 +80,10 @@ int main(int argc, char *argv[])
 	//	read(fd, &buff, sizeof(fat));
 	printf("FirstSector1: %x\n", FirstSectorofCluster);
 	read(fd, &character, 1);
-	ptr = (struct BS_BPB*)buff;
-
-	//	memcpy(&fat, buff, sizeof(buff));
-
-	//	DataSec = ptr->BPB_TotSec32 - (ptr->BPB_RsvdSecCnt + (ptr->BPB_NumFATs * ptr->BPB_FATSz32)) * 512; 
+	//	ptr = (struct BS_BPB*)buff;
 
 	printf("%x\t%x\t%x\t%x\t%x\t%x\t%x\n", ptr->BPB_RsvdSecCnt, ptr->BPB_NumFATs, ptr->BPB_FATSz32, ptr->BPB_SecPerClus, FirstDataSector, FirstSectorofCluster, ptr->BPB_TotSec32);
 
-	//	printf("character1 is: %x\n", character);
 	while(character != 0x41)
 	{
 		FirstSectorofCluster += 32;
@@ -97,34 +92,29 @@ int main(int argc, char *argv[])
 			lseek(fd, FirstSectorofCluster, SEEK_SET);
 			read(fd, &character, 1);
 		}
-		//		printf("character2 is: %x\n", character);
-		sleep(1);
 	}
 
-	//	printf("FirstSector: %x\n", FirstSectorofCluster);
 	while(character != 0x00)
 	{
-		//		printf("FirstSector: %x\n", FirstSectorofCluster);
-		//		printf("ch is: %x\n", character);
 		if (character == 0x41)
 		{
 			lseek(fd, FirstSectorofCluster+32, SEEK_SET);
 			read(fd, &name, 8);
-			lseek(fd, FirstSectorofCluster+32+11, SEEK_SET);
+			lseek(fd, FirstSectorofCluster+32+11, SEEK_SET);	/*Setting the position to read the file attributes*/
 			read(fd, &attribute, 1);
-			printf("name is: %s\t %x\n", name, attribute);
-			if (attribute == 0x10)
+			printf("name is: %s\t ", name);
+			if (attribute == 0x10){
 				dir_count++;
-			else if (attribute == 0x20)
+				printf("Directory\n");
+			}
+			else if (attribute == 0x20){
 				file_count++;
-			/*	lseek(fd, 18, SEEK_CUR);
-				read(fd, &N, 2);
-				FirstSectorofCluster = (N-2) * ptr->BPB_SecPerClus * ptr->BPB_BytsPerSec + FirstDataSector;	*/
+				printf("File\n");
+			}
 		}
 		FirstSectorofCluster += 32;
 		lseek(fd, FirstSectorofCluster, SEEK_SET);
 		read(fd, &character, 1);
-		//		sleep(1);
 	}
 	printf("Number of files: %d\n", file_count);
 	printf("Number of directory: %d\n", dir_count);
