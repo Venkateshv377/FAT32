@@ -40,14 +40,14 @@ struct BS_BPB {
 unsigned int file_count = 0, dir_count = 0;
 unsigned char name[11] = {0};
 unsigned char size;
+unsigned int Temp_cluster;
 
 void recursive(int fd, struct BS_BPB *ptr1, unsigned char attr, unsigned short int n, unsigned int FirstDataSector);
 int main(int argc, char *argv[])
 {
 	int fd, i = 0;
-	struct BS_BPB fat;
 	struct BS_BPB *ptr;
-	unsigned char buff[sizeof(fat)];
+	unsigned char buff[sizeof(struct BS_BPB)];
 	unsigned char character, attribute;
 	unsigned int FirstDataSector, FAT_Start;
 	unsigned int FirstSectorofCluster;
@@ -60,20 +60,18 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	SizeofCluster = fat.BPB_SecPerClus * 512;
 
 	if((fd = open(argv[1], O_RDONLY, S_IRWXU)) < 0){
 		perror("Error");
 		return 0;
 	}
 
-	read(fd, &buff, sizeof(fat));
+	SizeofCluster = ptr->BPB_SecPerClus * 512;
+	read(fd, &buff, sizeof(buff));
 	ptr = (struct BS_BPB*)buff;
-	//	memcpy(&fat, buff, sizeof(buff));
-	printf("Bytes: %d\n", ptr->BPB_BytsPerSec);
 
 	FirstSectorofCluster = (ptr->BPB_RsvdSecCnt + (ptr->BPB_NumFATs * ptr->BPB_FATSz32)) * ptr->BPB_BytsPerSec; 
-
+	Temp_cluster = FirstSectorofCluster;
 	FirstDataSector = (N-2) * ptr->BPB_SecPerClus * ptr->BPB_BytsPerSec + FirstSectorofCluster;
 
 	FAT_Start = ptr->BPB_RsvdSecCnt * ptr->BPB_BytsPerSec;
@@ -82,7 +80,7 @@ int main(int argc, char *argv[])
 
 	read(fd, &character, 1);
 
-	while(character != 0x41)
+	while(character != 0x41 && character != 0x00)
 	{
 		FirstSectorofCluster += 32;
 		if (character != 0x41)
@@ -92,9 +90,11 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	printf("\tName\t\tSize\t\tType\n");
+	printf("\t====================================\n");
 	while(character != 0x00)
 	{
-		if (character == 0x41)
+		if (character == 0x41 && character != 0x00)
 		{
 			lseek(fd, FirstSectorofCluster+32, SEEK_SET);
 			read(fd, &name, 8);
@@ -102,16 +102,16 @@ int main(int argc, char *argv[])
 			read(fd, &attribute, 1);
 			lseek(fd, FirstSectorofCluster+32+28, SEEK_SET);
 			read(fd, &size, 1); 
-			printf("name is: %s\t%x\t", name, size); 
+			printf("\t%s\t%x\t", name, size); 
 			if (attribute == 0x10 && size == 0x00){
 				lseek(fd, FirstSectorofCluster+32+26, SEEK_SET);	/*Setting the position to read the file attributes*/
 				read(fd, &N, 2);
 				dir_count++;
-				printf("%x\tDirectory", N);
+				printf("\tDirectory");
 				printf("\n");
 				recursive(fd, ptr, attribute, N, FirstDataSector); 
 			}
-			else if (attribute == 0x20){
+			else {
 				file_count++;
 				printf("\tFile");
 				printf("\n");
@@ -121,22 +121,24 @@ int main(int argc, char *argv[])
 		lseek(fd, FirstSectorofCluster, SEEK_SET);
 		read(fd, &character, 1);
 	}
-	printf("Number of files: %d\n", file_count);
-	printf("Number of directory: %d\n", dir_count);
+	printf("\n\n");
+	printf("\tNumber of files: %d\n", file_count);
+	printf("\tNumber of directory: %d\n", dir_count);
 	return 1;
 }
 
 void recursive(int fd, struct BS_BPB *ptr1, unsigned char attr, unsigned short int n, unsigned int FirstDataSector)
 {
+//	printf("Temp:%x\n", Temp_cluster);
 	unsigned int FirstSectorofCluster;
 	unsigned char character, attribute;
-	printf("FirstDataSector: %x\n", FirstDataSector);
-	FirstDataSector = (n-2) * ptr1->BPB_SecPerClus * ptr1->BPB_BytsPerSec + FirstDataSector;
-	FirstSectorofCluster = FirstDataSector;
+//	printf("FirstDataSector: %x\n", FirstDataSector);
+	FirstSectorofCluster = (n-2) * ptr1->BPB_SecPerClus * ptr1->BPB_BytsPerSec + FirstDataSector;
+//	printf("FDS: %x\t FSC: %x\tn: %x\n", FirstDataSector, FirstSectorofCluster, n);
 	lseek(fd, FirstSectorofCluster, SEEK_SET);
 	read(fd, &character, 1);
-	printf("character: %x\n", character);
-	while(character != 0x41)
+//	printf("character: %x\n", character);
+	while(character != 0x41 && character != 0x00)
 	{
 		FirstSectorofCluster += 32;
 		if (character != 0x41)
@@ -146,11 +148,11 @@ void recursive(int fd, struct BS_BPB *ptr1, unsigned char attr, unsigned short i
 		}
 	}
 
-	printf("character: %x\n", character);
-	printf("FirstSectorofCluster: %x\n", FirstSectorofCluster);
+	//	printf("character: %x\n", character);
+	//	printf("FirstSectorofCluster: %x\n", FirstSectorofCluster);
 	while(character != 0x00)
 	{
-		if (character == 0x41)
+		if (character == 0x41 && character != 0x00)
 		{
 			lseek(fd, FirstSectorofCluster+32, SEEK_SET);
 			read(fd, &name, 8); 
@@ -158,12 +160,12 @@ void recursive(int fd, struct BS_BPB *ptr1, unsigned char attr, unsigned short i
 			read(fd, &attribute, 1); 
 			lseek(fd, FirstSectorofCluster+32+28, SEEK_SET);
 			read(fd, &size, 1); 
-			printf("name is: %s\t%x\t", name, size); 
+			printf("\t%s\t%x\t", name, size); 
 			if (attribute == 0x10 && size == 0x00){
 				dir_count++;
 				lseek(fd, FirstSectorofCluster+32+26, SEEK_SET);        /*Setting the file descriptor to read the cluster number*/
 				read(fd, &n, 2); 
-				printf("%x\tDirectory", n);
+				printf("\tDirectory");
 				printf("\n");
 				recursive(fd, ptr1, attribute, n, FirstDataSector); 
 			}
@@ -177,5 +179,4 @@ void recursive(int fd, struct BS_BPB *ptr1, unsigned char attr, unsigned short i
 		lseek(fd, FirstSectorofCluster, SEEK_SET);
 		read(fd, &character, 1); 
 	}
-	sleep(1);
 }
