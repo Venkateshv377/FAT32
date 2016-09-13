@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 	int fd, i = 0;
 	struct BS_BPB *ptr;
 	unsigned char buff[sizeof(struct BS_BPB)];
-	unsigned char character, attribute;
+	unsigned char character1, character2[2]={0}, attribute;
 	unsigned int FirstDataSector, FAT_Start;
 	unsigned int FirstSectorofCluster;
 	unsigned int DataSec, SizeofCluster;
@@ -78,33 +78,37 @@ int main(int argc, char *argv[])
 
 	lseek(fd, FirstSectorofCluster, SEEK_SET);
 
-	read(fd, &character, 1);
+	read(fd, &character1, 1);
 
-	while(character != 0x41 && character != 0x00)
+	while(character1 != 0x41 && character1 != 0x00)
 	{
 		FirstSectorofCluster += 32;
-		if (character != 0x41)
+		if (character1 != 0x41)
 		{
 			lseek(fd, FirstSectorofCluster, SEEK_SET);
-			read(fd, &character, 1);
+			read(fd, &character1, 1);
 		}
 	}
 
 	printf("\tName\t\tSize\t\tType\n");
 	printf("\t====================================\n");
-	while(character != 0x00)
+	while(character1 != 0x00)
 	{
-		if (character == 0x41 && character != 0x00)
+		if (character1 == 0x41)
 		{
 			lseek(fd, FirstSectorofCluster+32, SEEK_SET);
 			read(fd, &name, 8);
-			lseek(fd, FirstSectorofCluster+32+11, SEEK_SET);	/*Setting the position to read the file attributes*/
+			lseek(fd, FirstSectorofCluster+32+11, SEEK_SET);	//Setting the position to read the file attributes*/
 			read(fd, &attribute, 1);
 			lseek(fd, FirstSectorofCluster+32+28, SEEK_SET);
 			read(fd, &size, 1); 
+			if (name[0] == 0x41)
+			{
+				FirstSectorofCluster += 32;
+			}
 			printf("\t%s\t%x\t", name, size); 
-			if (attribute == 0x10 && size == 0x00){
-				lseek(fd, FirstSectorofCluster+32+26, SEEK_SET);	/*Setting the position to read the file attributes*/
+			if (attribute == 0x10){
+				lseek(fd, FirstSectorofCluster+32+26, SEEK_SET);	//Setting the position to read the file attributes*/
 				read(fd, &N, 2);
 				dir_count++;
 				printf("\tDirectory");
@@ -119,9 +123,9 @@ int main(int argc, char *argv[])
 		}
 		FirstSectorofCluster += 32;
 		lseek(fd, FirstSectorofCluster, SEEK_SET);
-		read(fd, &character, 1);
+		read(fd, &character1, 1);
 	}
-	printf("\n\n");
+	printf("\t====================================\n");
 	printf("\tNumber of files: %d\n", file_count);
 	printf("\tNumber of directory: %d\n", dir_count);
 	return 1;
@@ -129,41 +133,38 @@ int main(int argc, char *argv[])
 
 void recursive(int fd, struct BS_BPB *ptr1, unsigned char attr, unsigned short int n, unsigned int FirstDataSector)
 {
-//	printf("Temp:%x\n", Temp_cluster);
 	unsigned int FirstSectorofCluster;
-	unsigned char character, attribute;
-//	printf("FirstDataSector: %x\n", FirstDataSector);
+	unsigned char character1, character2[2]={0}, attribute;
 	FirstSectorofCluster = (n-2) * ptr1->BPB_SecPerClus * ptr1->BPB_BytsPerSec + FirstDataSector;
-//	printf("FDS: %x\t FSC: %x\tn: %x\n", FirstDataSector, FirstSectorofCluster, n);
 	lseek(fd, FirstSectorofCluster, SEEK_SET);
-	read(fd, &character, 1);
-//	printf("character: %x\n", character);
-	while(character != 0x41 && character != 0x00)
+	read(fd, &character1, 1);
+	while(character1 != 0x41 && character1 != 0x00)
 	{
 		FirstSectorofCluster += 32;
-		if (character != 0x41)
+		if (character1 != 0x41)
 		{
 			lseek(fd, FirstSectorofCluster, SEEK_SET);
-			read(fd, &character, 1);
+			read(fd, &character1, 1);
 		}
 	}
-
-	//	printf("character: %x\n", character);
-	//	printf("FirstSectorofCluster: %x\n", FirstSectorofCluster);
-	while(character != 0x00)
+	while(character1 != 0x00)
 	{
-		if (character == 0x41 && character != 0x00)
+		if (character1 == 0x41)
 		{
 			lseek(fd, FirstSectorofCluster+32, SEEK_SET);
 			read(fd, &name, 8); 
-			lseek(fd, FirstSectorofCluster+32+11, SEEK_SET);        /*Setting the file descriptor to read the file attributes*/
+			lseek(fd, FirstSectorofCluster+32+11, SEEK_SET);        //Setting the file descriptor to read the file attributes
 			read(fd, &attribute, 1); 
 			lseek(fd, FirstSectorofCluster+32+28, SEEK_SET);
 			read(fd, &size, 1); 
+			if (name[0] == 0x41)
+			{
+				FirstSectorofCluster += 32;
+			}
 			printf("\t%s\t%x\t", name, size); 
-			if (attribute == 0x10 && size == 0x00){
+			if (attribute == 0x10){
 				dir_count++;
-				lseek(fd, FirstSectorofCluster+32+26, SEEK_SET);        /*Setting the file descriptor to read the cluster number*/
+				lseek(fd, FirstSectorofCluster+32+26, SEEK_SET);        //Setting the file descriptor to read the cluster number
 				read(fd, &n, 2); 
 				printf("\tDirectory");
 				printf("\n");
@@ -177,6 +178,6 @@ void recursive(int fd, struct BS_BPB *ptr1, unsigned char attr, unsigned short i
 		}
 		FirstSectorofCluster += 32; 
 		lseek(fd, FirstSectorofCluster, SEEK_SET);
-		read(fd, &character, 1); 
+		read(fd, &character1, 1); 
 	}
 }
