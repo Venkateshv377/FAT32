@@ -1,18 +1,19 @@
 #include "header.h"
 
-void print(unsigned char big_name[])
+void print(unsigned char *short_name, unsigned int size)
 {
 	int i, j = 0;
-	memset(name,0,32);
-	for(i = 0; i < 32; i++)
+	name = calloc(size, sizeof(char));
+	memset(name,0,size);
+	for(i = 0; i < size-1; i++)
 	{
-		if(i > 11 && i < 13)
+		if(i > 10 && i < 13)
 		{
 			continue;
 		}
-		if(isprint(big_name[i]) != 0)
+		if(isprint(short_name[i]) != 0)
 		{
-			name[j] = big_name[i];
+			name[j] = short_name[i];
 			j++;
 		}
 	}

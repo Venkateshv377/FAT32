@@ -38,10 +38,13 @@ struct BS_BPB {
 } __attribute__((packed));
 
 unsigned int file_count, dir_count;
-unsigned char name[32];
+unsigned char *name;
 unsigned char big_name[32];
-unsigned char size;
+unsigned char *name_long;
+unsigned int size;
 
 void recursive(int fd, struct BS_BPB *ptr1, unsigned char attr, unsigned short int n, unsigned int FirstDataSector);
 
-void print(unsigned char *big_name);
+void print(unsigned char *short_name, unsigned int size);
+
+void long_name(int fd, unsigned int FirstSectorofCluster, unsigned char *attribute, unsigned short int *N);

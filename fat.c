@@ -1,11 +1,12 @@
 #include "header.h"
 
+extern attribute_long;
 int main(int argc, char *argv[])
 {
 	int fd, i = 0;
 	struct BS_BPB *ptr;
 	unsigned char buff[sizeof(struct BS_BPB)];
-	unsigned char character1, attribute;
+	unsigned char character1, character2, attribute;
 	unsigned int FirstDataSector, FAT_Start;
 	unsigned int FirstSectorofCluster;
 	unsigned int SizeofCluster;
@@ -47,22 +48,26 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	lseek(fd, FirstSectorofCluster+2, SEEK_SET);
+	read(fd, &character2, 1);
+
 	while(character1 != 0x00)
 	{
 		if (character1 == 0x41)
 		{
-			read(fd, &big_name, 31);
-			print(big_name);
+			lseek(fd, FirstSectorofCluster+1, SEEK_SET);
+			read(fd, &big_name, 32);
+			print(big_name, 32);
 
 			lseek(fd, FirstSectorofCluster+32+11, SEEK_SET);	//Setting the position to read the file attributes
 			read(fd, &attribute, 1);
 			lseek(fd, FirstSectorofCluster+32+28, SEEK_SET);
 			read(fd, &size, 1); 
-			if (name[0] == 0x41)
+			if (big_name[31] == 0x41)
 			{
 				FirstSectorofCluster += 32;
 			}
-			if (attribute == 0x10){
+			if (attribute & 0x10){
 				printf("\033[22;36m%s\033[0m", name); 
 				lseek(fd, FirstSectorofCluster+32+26, SEEK_SET);	//Setting the position to read the file attributes
 				read(fd, &N, 2);
@@ -70,16 +75,33 @@ int main(int argc, char *argv[])
 				printf("\n");
 				recursive(fd, ptr, attribute, N, FirstDataSector); 
 			}
-
 			else {
 				printf("\033[22;32m%s\033[0m", name); 
 				file_count++;
 				printf("\n");
 			}	
 		}
+		else if ((character1 > 0x41 && character1 < 0x4f) && (character2 == 0x00))
+		{
+			long_name(fd, FirstSectorofCluster, &attribute, &N);
+			if (attribute & 0x10 ){
+				printf("\033[22;36m%s\033[0m", name_long); 
+				dir_count++;
+				printf("\n");
+				recursive(fd, ptr, attribute, N, FirstDataSector); 
+			}
+			else {
+				printf("\033[22;32m%s\033[0m", name_long); 
+				file_count++;
+				printf("\n");
+			}	
+		}
+
 		FirstSectorofCluster += 32;
 		lseek(fd, FirstSectorofCluster, SEEK_SET);
 		read(fd, &character1, 1);
+		lseek(fd, FirstSectorofCluster+2, SEEK_SET);
+		read(fd, &character2, 1);
 	}
 	printf("%d files, %d directories\n", file_count, dir_count);
 	return 1;
